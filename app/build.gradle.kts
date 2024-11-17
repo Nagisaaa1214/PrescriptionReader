@@ -33,7 +33,13 @@ android {
 }
 
 dependencies {
-    val cameraxVersion = "1.4.0"
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.crashlytics.buildtools)
+    implementation(libs.concurrent.futures)
+    implementation(libs.guava)
+    val cameraxVersion = "1.3.0"
     // CameraX dependencies
     implementation("androidx.camera:camera-core:${cameraxVersion}")
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")

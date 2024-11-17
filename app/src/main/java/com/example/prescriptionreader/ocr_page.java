@@ -7,10 +7,10 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-
-import android.hardware.camera2.CaptureRequest;
-import androidx.camera.camera2.interop.Camera2Interop;
+import android.widget.ScrollView;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.view.View;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
@@ -18,37 +18,28 @@ import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
-import androidx.lifecycle.LifecycleOwner;
-import android.util.Size;
+import androidx.appcompat.app.AlertDialog;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.ExecutionException;
-
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.camera.core.Camera;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
-import androidx.camera.core.Preview;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.Text;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.TextRecognizer;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
-
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Date;
 
 public class ocr_page extends AppCompatActivity {
 
@@ -56,11 +47,14 @@ public class ocr_page extends AppCompatActivity {
     private TextView scanResultsText;
     private Button captureButton;
     private Button flashButton;
+    private Button historyButton;
     private Camera camera;
     private ProcessCameraProvider cameraProvider;
     private ImageCapture imageCapture;
     private TextRecognizer textRecognizer;
     private boolean isFlashOn = false;
+    private FirebaseFirestore db;
+    private FirebaseStorage storage;
 
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final String[] REQUIRED_PERMISSIONS = new String[]{
@@ -71,6 +65,10 @@ public class ocr_page extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ocr_page);
+
+        // Initialize Firebase
+        db = FirebaseFirestore.getInstance();
+        storage = FirebaseStorage.getInstance();
 
         initializeViews();
         setupTextRecognizer();
@@ -87,9 +85,11 @@ public class ocr_page extends AppCompatActivity {
         scanResultsText = findViewById(R.id.scanResultsText);
         captureButton = findViewById(R.id.captureButton);
         flashButton = findViewById(R.id.flashButton);
+        historyButton = findViewById(R.id.historyButton);
 
         captureButton.setOnClickListener(v -> captureImage());
         flashButton.setOnClickListener(v -> toggleFlash());
+        historyButton.setOnClickListener(v -> showHistory());
     }
 
     private void setupTextRecognizer() {
@@ -175,6 +175,8 @@ public class ocr_page extends AppCompatActivity {
                         String recognizedText = processRecognizedText(text);
                         runOnUiThread(() -> {
                             scanResultsText.setText(recognizedText);
+                            // Save to Firebase after successful recognition
+                            saveToFirebase(recognizedText, imageFile);
                         });
                     })
                     .addOnFailureListener(e -> {
@@ -193,6 +195,73 @@ public class ocr_page extends AppCompatActivity {
             result.append(block.getText()).append("\n");
         }
         return result.toString();
+    }
+
+    private void saveToFirebase(String recognizedText, File imageFile) {
+        // Upload image to Firebase Storage
+        StorageReference storageRef = storage.getReference()
+                .child("prescriptions/" + imageFile.getName());
+
+        storageRef.putFile(Uri.fromFile(imageFile))
+                .addOnSuccessListener(taskSnapshot -> {
+                    // Get download URL and save to Firestore
+                    storageRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                        Map<String, Object> scan = new HashMap<>();
+                        scan.put("text", recognizedText);
+                        scan.put("imageUrl", uri.toString());
+                        scan.put("timestamp", new Date());
+
+                        db.collection("prescriptions")
+                                .add(scan)
+                                .addOnSuccessListener(documentReference ->
+                                        Toast.makeText(this, "Saved to history",
+                                                Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e ->
+                                        Toast.makeText(this, "Error saving to history",
+                                                Toast.LENGTH_SHORT).show());
+                    });
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Error uploading image",
+                                Toast.LENGTH_SHORT).show());
+    }
+
+    private void showHistory() {
+        // Create a dialog to show history
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Scan History");
+
+        // Create a ScrollView to hold the history
+        ScrollView scrollView = new ScrollView(this);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(16, 16, 16, 16);
+
+        db.collection("prescriptions")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (DocumentSnapshot document : queryDocumentSnapshots) {
+                        String text = document.getString("text");
+                        TextView textView = new TextView(this);
+                        textView.setText(text);
+                        textView.setPadding(0, 8, 0, 8);
+                        layout.addView(textView);
+
+                        View divider = new View(this);
+                        divider.setBackgroundColor(Color.GRAY);
+                        divider.setLayoutParams(new LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, 1));
+                        layout.addView(divider);
+                    }
+                    scrollView.addView(layout);
+                    builder.setView(scrollView);
+                    builder.setPositiveButton("Close", null);
+                    builder.show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "Error loading history",
+                                Toast.LENGTH_SHORT).show());
     }
 
     private void toggleFlash() {
@@ -241,14 +310,3 @@ public class ocr_page extends AppCompatActivity {
         }
     }
 }
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        EdgeToEdge.enable(this);
-//        setContentView(R.layout.activity_ocr_page);
-//        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-//            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-//            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-//            return insets;
-//        });
-//    }
