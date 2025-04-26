@@ -80,8 +80,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Email',
                     helperText: 'Enter your registered email address',
                     helperStyle: TextStyle(fontSize: 12),
-                    enabledBorder: OutlineInputBorder(
+                    border: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.black)),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blueAccent)),
                     ),
                   keyboardType: TextInputType.emailAddress,
                   
@@ -94,8 +96,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     helperText: 'Enter your password',
                     helperStyle: TextStyle(fontSize: 12),
                     labelText: 'Password',
-                    enabledBorder: OutlineInputBorder(
+                    border: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.black)),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blueAccent)),
                     ),
                   obscureText: true,
                 ),
@@ -123,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
-                      side: const BorderSide(color: Colors.lightGreen),
+                      side: const BorderSide(color: Colors.green),
                     ),
                   ),
                 ),

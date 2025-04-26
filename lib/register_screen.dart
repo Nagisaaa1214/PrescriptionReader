@@ -95,8 +95,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.email),
                     labelText: 'Email',
-                    enabledBorder: OutlineInputBorder(
+                    border: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.black)),
+                      focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blueAccent)),
                     ),
                   keyboardType: TextInputType.emailAddress,
                 ),
@@ -106,8 +108,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.lock),
                     labelText: 'Password',
-                    enabledBorder: OutlineInputBorder(
+                    border: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.black)),
+                      focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blueAccent)),
                     ),
                   obscureText: true,
                 ),
@@ -120,8 +124,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         labelText: 'Confirm Password',
                         helperText: 'Enter your password again',
                         helperStyle: TextStyle(fontSize: 12),
-                        enabledBorder: OutlineInputBorder(
+                        border: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.black)),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.blueAccent)),
                         ),
                   obscureText: true,
                 ),
