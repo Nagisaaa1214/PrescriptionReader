@@ -1,0 +1,33 @@
+name: medication_reminder_app
+description: A medication reminder application.
+
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0' # Adjust based on your Flutter version
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.1.1 # Use latest versions
+  firebase_auth: ^5.1.1
+  cloud_firestore: ^5.0.2
+
+  # State Management
+  provider: ^6.1.2 # Or flutter_bloc, riverpod
+
+  # UI & Utilities
+  cupertino_icons: ^1.0.6
+  intl: ^0.19.0 # For date/time formatting
+  table_calendar: ^3.1.2 # For calendar view
+  image_picker: ^1.1.2 # For picking images (alternative to live camera)
+  image_cropper: ^5.0.1 # Optional: For cropping prescription image
+
+  # Functionality
+  google_mlkit_text_recognition: ^0.12.0 # For OCR - Requires setup!
+  camera: ^0.11.0+1 # For live camera scanning - Requires setup!
+  flutter_local_notifications: ^17.1.2 # For reminders 

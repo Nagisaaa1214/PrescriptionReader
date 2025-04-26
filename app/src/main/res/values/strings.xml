@@ -1,7 +1,0 @@
-<resources>
-    <string name="app_name">Prescription Reader</string>
-    <string name="login">Login</string>
-    <string name="email">email</string>
-    <string name="password">password</string>
-    <string name="Register">Register</string>
-</resources>
