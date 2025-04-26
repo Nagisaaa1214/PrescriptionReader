@@ -76,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(title: const Text('')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
@@ -84,22 +84,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const Text(
+                  'Please Register',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
                 TextField(
                   controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.email),
+                    labelText: 'Email',
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black)),
+                    ),
                   keyboardType: TextInputType.emailAddress,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password'),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.lock),
+                    labelText: 'Password',
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black)),
+                    ),
                   obscureText: true,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 TextField(
                   controller: _confirmPasswordController,
                   decoration:
-                      const InputDecoration(labelText: 'Confirm Password'),
+                      const InputDecoration(
+                        prefixIcon: Icon(Icons.lock),
+                        labelText: 'Confirm Password',
+                        helperText: 'Enter your password again',
+                        helperStyle: TextStyle(fontSize: 12),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.black)),
+                        ),
                   obscureText: true,
                 ),
                 const SizedBox(height: 20),
@@ -107,18 +130,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10.0),
                     child: Text(
-                      _errorMessage,
+                      "Check your email and password",
                       style: const TextStyle(color: Colors.red),
                       textAlign: TextAlign.center,
                     ),
                   ),
+                const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _signUp,
                   child: const Text('Register'),
+                    style: ElevatedButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 20),
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.lightGreen,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                      vertical: 15,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: const BorderSide(color: Colors.lightGreen),
+                    ),
                 ),
+                ),
+                const SizedBox(height: 10),
                 TextButton(
                   onPressed: widget.showLoginScreen, // Use the callback
                   child: const Text('Already have an account? Login'),
+                    style: TextButton.styleFrom(
+                    textStyle: const TextStyle(fontSize: 16),
+                    foregroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                      vertical: 15,
+                    ),
+                  ),
                 ),
               ],
             ),
