@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "207934328582",
+    "project_id": "medapp-41b97",
+    "storage_bucket": "medapp-41b97.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:207934328582:android:3423e2a7a30ff5d417d887",
+        "android_client_info": {
+          "package_name": "com.example.medication_reminder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBskhNyJj7OvCNQ3_P201Pmgf7an7zWJZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
