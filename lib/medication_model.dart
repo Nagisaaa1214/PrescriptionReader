@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart'; // Keep for TimeOfDay if used elsewhere, but not stored
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 
 class Medication {
   String? id;
   String name;
   String? dosage;
-  String? frequencyRaw; // Raw text like "twice daily" - NOW THE SOURCE FOR SCHEDULING
-  String? directions; // Store extra info here
+  String? frequencyRaw; // Keep raw text from AI/OCR for reference
+  String? selectedFrequency; // <-- ADDED: Store the dropdown selection
+  String? directions;
   String userId;
   List<Timestamp> takenTimestamps;
 
@@ -17,8 +17,8 @@ class Medication {
     required this.name,
     this.dosage,
     this.frequencyRaw,
+    this.selectedFrequency, // <-- ADDED
     this.directions,
-    // removed reminderTimes from constructor
     required this.userId,
     List<Timestamp>? takenTimestamps,
   }) : takenTimestamps = takenTimestamps ?? [];
@@ -33,15 +33,16 @@ class Medication {
       id: doc.id,
       name: data['name'] ?? 'Unknown Name',
       dosage: data['dosage'],
-      frequencyRaw: data['frequencyRaw'], // Read frequency text
-      directions: data['directions'], // Read directions
-      // reminderTimes removed
+      frequencyRaw: data['frequencyRaw'], // Read raw frequency
+      selectedFrequency: data['selectedFrequency'], // <-- ADDED: Read selected frequency
+      directions: data['directions'],
       userId: data['userId'] ?? '',
       takenTimestamps: taken,
     );
   }
 
   // Factory from JSON String (AI Parsing output)
+  // This now primarily populates frequencyRaw. selectedFrequency will be set by user.
   factory Medication.fromJsonString(String jsonString) {
     try {
       final cleanJson =
@@ -50,28 +51,25 @@ class Medication {
       return Medication(
         name: data['name'] ?? 'Unknown Name',
         dosage: data['dosage'],
-        frequencyRaw: data['frequency'], // Get frequency text from AI
-        directions: data['directions'], // Get directions text from AI
-        // reminderTimes removed
-        userId: '', // Will be set before saving
+        frequencyRaw: data['frequency'], // Store AI's guess here
+        selectedFrequency: null, // <-- Initialize as null, user must select
+        directions: data['directions'],
+        userId: '',
         takenTimestamps: [],
       );
     } catch (e) {
       print("Error decoding JSON string: $e \nString was: $jsonString");
       return Medication(
-          name: 'Parsing Error',
-          // reminderTimes removed
-          userId: '',
-          takenTimestamps: []);
+          name: 'Parsing Error', userId: '', takenTimestamps: []);
     }
   }
 
   Map<String, dynamic> toJson() {
-    // reminderTimes removed from map
     return {
       'name': name,
       'dosage': dosage,
       'frequencyRaw': frequencyRaw,
+      'selectedFrequency': selectedFrequency, // <-- ADDED: Save selected frequency
       'directions': directions,
       'userId': userId,
       'takenTimestamps': takenTimestamps,

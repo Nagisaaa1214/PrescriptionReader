@@ -108,7 +108,7 @@ class NotificationService {
     // Optionally show an in-app banner or dialog here for older iOS
   }
 
-  // --- Scheduling Logic (MODIFIED) ---
+  // --- Scheduling Logic (Uses selectedFrequency) ---
   Future<void> scheduleMedicationReminders(Medication medication) async {
     if (!_initialized) {
       debugPrint("Notification Service not initialized. Cannot schedule.");
@@ -122,18 +122,18 @@ class NotificationService {
     // --- Cancel existing notifications for this med first ---
     await cancelMedicationNotifications(medication.id!);
 
-    // --- Parse the frequency text to get scheduled times ---
+    // --- Parse the SELECTED frequency dropdown value ---
     final List<TimeOfDay> scheduledTimes =
-        _frequencyParser.parseFrequency(medication.frequencyRaw); // Use the parser
+        _frequencyParser.parseFrequency(medication.selectedFrequency); // Use selectedFrequency
 
     if (scheduledTimes.isEmpty) {
       debugPrint(
-          "No automatic schedule determined for ${medication.name} based on '${medication.frequencyRaw}'. No notifications scheduled.");
-      return; // Don't schedule if parsing failed or frequency is PRN/empty
+          "No automatic schedule determined for ${medication.name} based on selection '${medication.selectedFrequency}'. No notifications scheduled.");
+      return; // Don't schedule if parsing failed or frequency is PRN/empty/Other
     }
 
     debugPrint(
-        "Scheduling ${scheduledTimes.length} notifications for ${medication.name} based on '${medication.frequencyRaw}'");
+        "Scheduling ${scheduledTimes.length} notifications for ${medication.name} based on selection '${medication.selectedFrequency}'");
 
     // --- Notification Details (Platform Specific) ---
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -165,10 +165,7 @@ class NotificationService {
 
     // --- Schedule for each PARSED reminder time ---
     int notificationIndex = 0; // Index for generating unique IDs
-    // --- ** CORRECTED LOOP ITERATION ** ---
     for (TimeOfDay time in scheduledTimes) { // Iterate over parsed times
-    // --- ** END CORRECTION ** ---
-
       // Use the PARSED time (variable 'time' is non-nullable here)
       final tz.TZDateTime scheduledDateTime = _nextInstanceOfTime(time);
       // Generate ID based on med ID and the index in the *parsed* schedule
@@ -225,7 +222,7 @@ class NotificationService {
     return hashCode & 0x7FFFFFFF;
   }
 
-  // --- Cancel Notifications (MODIFIED) ---
+  // --- Cancel Notifications ---
   Future<void> cancelMedicationNotifications(String medicationId) async {
     if (!_initialized) {
       debugPrint("Notification Service not initialized. Cannot cancel.");
@@ -236,9 +233,8 @@ class NotificationService {
       return;
     }
     // Since we don't know the exact number of notifications scheduled without
-    // parsing the frequency again, we guess a reasonable maximum number
-    // of potential indices and try cancelling them.
-    // A more robust solution would store the generated IDs when scheduling.
+    // parsing the frequency again (or storing the scheduled IDs),
+    // we guess a reasonable maximum number of potential indices and try cancelling them.
     debugPrint(
         "Attempting to cancel notifications for med ID: $medicationId (guessing indices)");
     const int maxPotentialNotifications =
@@ -253,8 +249,5 @@ class NotificationService {
         // debugPrint("Note: Error cancelling potential notification $potentialId: $e");
       }
     }
-    // Alternatively, cancel all notifications if that's acceptable:
-    // await flutterLocalNotificationsPlugin.cancelAll();
-    // debugPrint("Cancelled ALL notifications.");
   }
 }

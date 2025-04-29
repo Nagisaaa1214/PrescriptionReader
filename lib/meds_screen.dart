@@ -4,7 +4,7 @@ import 'package:medication_reminder/firestore_service.dart'; // Service for Fire
 import 'package:medication_reminder/medication_model.dart'; // Data model for Medication
 import 'package:cloud_firestore/cloud_firestore.dart'; // For StreamBuilder types and Timestamp
 import 'package:medication_reminder/notification_service.dart'; // Service for notifications
-import 'package:medication_reminder/frequency_parser_service.dart'; // <-- **ADDED THIS IMPORT**
+import 'package:medication_reminder/frequency_parser_service.dart'; // Service to parse frequency selection
 // Optional: For formatting dates if you display 'Last taken' time
 // import 'package:intl/intl.dart';
 
@@ -19,7 +19,7 @@ class _MedsScreenState extends State<MedsScreen> {
   // Instantiate necessary services
   final FirestoreService _firestoreService = FirestoreService();
   final NotificationService _notificationService = NotificationService();
-  final FrequencyParserService _frequencyParser = FrequencyParserService(); // Now recognized
+  final FrequencyParserService _frequencyParser = FrequencyParserService(); // Instantiate parser
 
   // --- Function to show delete confirmation dialog ---
   Future<void> _confirmDelete(BuildContext context, Medication med) async {
@@ -80,9 +80,9 @@ class _MedsScreenState extends State<MedsScreen> {
   // --- Function to determine if dose was taken since last scheduled time ---
   bool _hasTakenDoseSinceLastSchedule(Medication med) {
     final now = DateTime.now();
-    // Parse the frequency text to get the list of scheduled TimeOfDay
+    // Parse the SELECTED frequency dropdown value
     final List<TimeOfDay> scheduledTimesOfDay =
-        _frequencyParser.parseFrequency(med.frequencyRaw);
+        _frequencyParser.parseFrequency(med.selectedFrequency); // Use selectedFrequency
 
     // If no schedule is determined or no doses have ever been taken, return false
     if (scheduledTimesOfDay.isEmpty || med.takenTimestamps.isEmpty) {
@@ -227,7 +227,8 @@ class _MedsScreenState extends State<MedsScreen> {
                   subtitle: Padding( // Add padding for subtitle clarity
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
-                      'Dosage: ${med.dosage ?? "N/A"}\nFrequency: ${med.frequencyRaw ?? "N/A"}\nDirections: ${med.directions ?? "N/A"}',
+                      // ** Display selectedFrequency **
+                      'Dosage: ${med.dosage ?? "N/A"}\nFrequency: ${med.selectedFrequency ?? "N/A"}\nDirections: ${med.directions ?? "N/A"}',
                       style: TextStyle(color: Colors.grey.shade700),
                       // Optional: Display last taken time
                       // + (med.takenTimestamps.isNotEmpty ? '\nLast taken: ${DateFormat.yMd().add_jm().format(med.takenTimestamps.last.toDate())}' : '')
