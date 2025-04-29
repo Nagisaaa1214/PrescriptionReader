@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:medication_reminder/ai_medication_parser_service.dart';
 import 'package:medication_reminder/medication_model.dart';
-import 'package:medication_reminder/firestore_service.dart'; // Create this
-import 'package:medication_reminder/notification_service.dart'; // Create this
-import 'package:firebase_auth/firebase_auth.dart'; // To get user ID
+import 'package:medication_reminder/firestore_service.dart';
+import 'package:medication_reminder/notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+// Removed imports related to TimeOfDay selection if they were specific
 
 class ConfirmationScreen extends StatefulWidget {
   final String ocrText; // Text from OCR
@@ -18,7 +19,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _aiParser = AiMedicationParserService();
   final _firestoreService = FirestoreService();
-  final _notificationService = NotificationService(); // Initialize this properly
+  final _notificationService = NotificationService();
 
   Medication? _medication; // Holds parsed data
   bool _isLoadingAi = true;
@@ -29,7 +30,7 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
   late TextEditingController _dosageController;
   late TextEditingController _frequencyController;
   late TextEditingController _directionsController;
-  List<TimeOfDay?> _selectedTimes = []; // For reminder times
+  // List<TimeOfDay?> _selectedTimes = []; // <-- REMOVED STATE VARIABLE
 
   @override
   void initState() {
@@ -39,7 +40,8 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
     _frequencyController = TextEditingController();
     _directionsController = TextEditingController();
     _parseOcrText();
-    _notificationService.initialize(); // Initialize notifications
+    // Ensure notification service is initialized (safe to call multiple times)
+    _notificationService.initialize();
   }
 
   @override
@@ -59,117 +61,69 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       // Populate controllers with AI results (handle nulls)
       _nameController.text = _medication?.name ?? '';
       _dosageController.text = _medication?.dosage ?? '';
-      _frequencyController.text = _medication?.frequencyRaw ?? '';
-      _directionsController.text = _medication?.directions ?? '';
-      _selectedTimes = _medication?.reminderTimes ?? []; // Start with empty/parsed times
+      _frequencyController.text = _medication?.frequencyRaw ?? ''; // Populate frequency text
+      _directionsController.text = _medication?.directions ?? ''; // Populate directions text
+      // _selectedTimes assignment removed
     });
   }
 
   Future<void> _saveMedication() async {
     if (_formKey.currentState!.validate() && !_isSaving) {
-       setState(() { _isSaving = true; });
+      setState(() { _isSaving = true; });
 
-       final user = FirebaseAuth.instance.currentUser;
-       if (user == null) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Error: Not logged in.'))
-          );
+              const SnackBar(content: Text('Error: Not logged in.')));
+        }
+        setState(() { _isSaving = false; });
+        return;
+      }
+
+      // Create Medication object WITHOUT reminderTimes parameter
+      final updatedMedication = Medication(
+        id: _medication?.id, // Keep ID if editing later
+        name: _nameController.text.trim(),
+        dosage: _dosageController.text.trim(),
+        frequencyRaw: _frequencyController.text.trim(), // Save the raw frequency text
+        directions: _directionsController.text.trim(), // Save the directions text
+        // reminderTimes parameter removed
+        userId: user.uid,
+        takenTimestamps: _medication?.takenTimestamps ?? [], // Preserve existing taken times if editing
+      );
+
+      try {
+        // Save to Firestore
+        String docId = await _firestoreService.saveMedication(updatedMedication);
+        updatedMedication.id = docId; // Store the ID back if it was new
+
+        // Schedule Notifications (NotificationService will now parse frequencyRaw)
+        await _notificationService.scheduleMedicationReminders(updatedMedication);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Medication saved successfully!')));
+          // Pop back twice: once for confirmation, once for add screen
+          int popCount = 0;
+          Navigator.of(context).popUntil((_) => popCount++ >= 1);
+        }
+      } catch (e) {
+        print("Error saving medication: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error saving: ${e.toString()}')));
+        }
+      } finally {
+        if (mounted) {
           setState(() { _isSaving = false; });
-          return;
-       }
-
-       // Create/Update Medication object from form fields
-       final updatedMedication = Medication(
-          id: _medication?.id, // Keep ID if editing later
-          name: _nameController.text.trim(),
-          dosage: _dosageController.text.trim(),
-          frequencyRaw: _frequencyController.text.trim(),
-          directions: _directionsController.text.trim(),
-          reminderTimes: _selectedTimes, // Use the selected times
-          userId: user.uid,
-       );
-
-       try {
-          // Save to Firestore
-          String docId = await _firestoreService.saveMedication(updatedMedication);
-          updatedMedication.id = docId; // Store the ID
-
-          // Schedule Notifications
-          await _notificationService.scheduleMedicationReminders(updatedMedication);
-
-          if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Medication saved successfully!'))
-             );
-             // Pop back twice: once for confirmation, once for add screen
-             int popCount = 0;
-             Navigator.of(context).popUntil((_) => popCount++ >= 1);
-          }
-
-       } catch (e) {
-          print("Error saving medication: $e");
-          if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error saving: ${e.toString()}'))
-             );
-          }
-       } finally {
-          if (mounted) {
-             setState(() { _isSaving = false; });
-          }
-       }
+        }
+      }
     }
   }
 
   // --- UI for selecting reminder times ---
-  Future<void> _selectTime(BuildContext context, int? index) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: (index != null && _selectedTimes.length > index && _selectedTimes[index] != null)
-          ? _selectedTimes[index]!
-          : TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        if (index == null) { // Add new time
-          _selectedTimes.add(picked);
-        } else { // Update existing time
-          _selectedTimes[index] = picked;
-        }
-      });
-    }
-  }
-
-  Widget _buildTimeSelectors() {
-    List<Widget> timeWidgets = [];
-    for (int i = 0; i < _selectedTimes.length; i++) {
-      timeWidgets.add(
-        ListTile(
-          leading: const Icon(Icons.alarm),
-          title: Text(_selectedTimes[i]?.format(context) ?? 'Not Set'),
-          trailing: IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () {
-              setState(() {
-                _selectedTimes.removeAt(i);
-              });
-            },
-          ),
-          onTap: () => _selectTime(context, i),
-        )
-      );
-    }
-    timeWidgets.add(
-      TextButton.icon(
-        icon: const Icon(Icons.add_alarm),
-        label: const Text("Add Reminder Time"),
-        onPressed: () => _selectTime(context, null), // Pass null for adding new
-      )
-    );
-    return Column(children: timeWidgets);
-  }
-  // --- End of Time Selection UI ---
-
+  // Widget _buildTimeSelectors() { ... } // <-- REMOVED ENTIRE FUNCTION
 
   @override
   Widget build(BuildContext context) {
@@ -177,45 +131,89 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
       appBar: AppBar(title: const Text('Confirm Medication')),
       body: _isLoadingAi
           ? const Center(child: CircularProgressIndicator())
-          : _medication == null && !_isLoadingAi
-              ? const Center(child: Text("Could not parse medication details."))
-              : Form(
+          : _medication == null && !_isLoadingAi // Handle case where AI parsing failed
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      "Could not automatically parse medication details from the text.\n\nOCR Text:\n${widget.ocrText}",
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : Form( // Show form even if parsing had issues, allowing manual entry/correction
                   key: _formKey,
                   child: ListView( // Use ListView for scrolling
                     padding: const EdgeInsets.all(16.0),
                     children: [
-                      Text("OCR Text:\n${widget.ocrText}", style: TextStyle(color: Colors.grey[600])),
-                      const Divider(height: 20),
+                      // Optional: Display OCR text for reference
+                      // ExpansionTile(
+                      //   title: Text("View Original OCR Text"),
+                      //   children: [Padding(
+                      //     padding: const EdgeInsets.all(8.0),
+                      //     child: Text(widget.ocrText, style: TextStyle(color: Colors.grey[600])),
+                      //   )],
+                      // ),
+                      // const Divider(height: 20),
                       TextFormField(
                         controller: _nameController,
-                        decoration: const InputDecoration(labelText: 'Medicine Name', border: OutlineInputBorder()),
-                        validator: (value) => (value == null || value.isEmpty) ? 'Please enter a name' : null,
+                        decoration: const InputDecoration(
+                            labelText: 'Medicine Name *', // Indicate required
+                            border: OutlineInputBorder()),
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? 'Please enter a name'
+                            : null,
                       ),
                       const SizedBox(height: 15),
                       TextFormField(
                         controller: _dosageController,
-                        decoration: const InputDecoration(labelText: 'Dosage (e.g., 10mg, 1 tablet)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Dosage',
+                            hintText: 'e.g., 10mg, 1 tablet',
+                            border: OutlineInputBorder()),
                       ),
-                       const SizedBox(height: 15),
+                      const SizedBox(height: 15),
                       TextFormField(
                         controller: _frequencyController,
-                        decoration: const InputDecoration(labelText: 'Frequency / Timing (e.g., Twice daily)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Frequency (for Auto-Scheduling)',
+                            hintText: 'e.g., Twice daily, Every 8 hours',
+                            border: OutlineInputBorder()),
                       ),
-                       const SizedBox(height: 15),
+                      const SizedBox(height: 15),
                       TextFormField(
                         controller: _directionsController,
-                        decoration: const InputDecoration(labelText: 'Directions (e.g., Take with food)', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                            labelText: 'Directions / Notes',
+                            hintText: 'e.g., Take with food, External use only',
+                            border: OutlineInputBorder()),
                         maxLines: 3,
+                        minLines: 1,
                       ),
                       const SizedBox(height: 20),
-                      const Text("Set Reminder Times:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      _buildTimeSelectors(), // Add time selection UI
-                      const SizedBox(height: 30),
+                      // Removed the time selectors UI call
+                      // const Text("Reminder Times:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      // _buildTimeSelectors(), // <-- REMOVED
+                      Padding( // Add info text about auto-scheduling
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          'Reminders will be scheduled automatically based on the Frequency text (e.g., "Twice daily" might schedule for 8 AM & 6 PM). Leave Frequency blank for no reminders.',
+                          style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: _isSaving ? null : _saveMedication,
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
+                        style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 15)),
                         child: _isSaving
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white,))
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Colors.white,
+                                ))
                             : const Text('Save Medication'),
                       ),
                     ],

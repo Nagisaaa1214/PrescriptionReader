@@ -1,16 +1,16 @@
+import 'package:flutter/material.dart'; // Keep for TimeOfDay if used elsewhere, but not stored
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class Medication {
   String? id;
   String name;
   String? dosage;
-  String? frequencyRaw;
-  String? directions;
-  List<TimeOfDay?> reminderTimes;
+  String? frequencyRaw; // Raw text like "twice daily" - NOW THE SOURCE FOR SCHEDULING
+  String? directions; // Store extra info here
   String userId;
-  List<Timestamp> takenTimestamps; // <-- ADDED: Store as Firestore Timestamps
+  List<Timestamp> takenTimestamps;
 
   Medication({
     this.id,
@@ -18,39 +18,30 @@ class Medication {
     this.dosage,
     this.frequencyRaw,
     this.directions,
-    required this.reminderTimes,
+    // removed reminderTimes from constructor
     required this.userId,
-    List<Timestamp>? takenTimestamps, // <-- ADDED: Optional in constructor
-  }) : takenTimestamps =
-            takenTimestamps ?? []; // <-- ADDED: Default to empty list
+    List<Timestamp>? takenTimestamps,
+  }) : takenTimestamps = takenTimestamps ?? [];
 
   factory Medication.fromSnapshot(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    List<TimeOfDay?> times = (data['reminderTimes'] as List<dynamic>?)
-            ?.map((ts) => ts == null
-                ? null
-                : TimeOfDay(hour: ts['hour'], minute: ts['minute']))
-            .toList() ??
-        [];
-    // <-- ADDED: Parse Timestamps -->
     List<Timestamp> taken = (data['takenTimestamps'] as List<dynamic>?)
-            ?.whereType<Timestamp>() // Ensure items are Timestamps
-            .toList() ??
-        []; // Default to empty list if null or wrong type
+            ?.whereType<Timestamp>()
+            .toList() ?? [];
 
     return Medication(
       id: doc.id,
       name: data['name'] ?? 'Unknown Name',
       dosage: data['dosage'],
-      frequencyRaw: data['frequencyRaw'],
-      directions: data['directions'],
-      reminderTimes: times,
+      frequencyRaw: data['frequencyRaw'], // Read frequency text
+      directions: data['directions'], // Read directions
+      // reminderTimes removed
       userId: data['userId'] ?? '',
-      takenTimestamps: taken, // <-- ADDED
+      takenTimestamps: taken,
     );
   }
-  // Factory constructor to parse AI JSON string (basic example)
-  // Needs robust error handling!
+
+  // Factory from JSON String (AI Parsing output)
   factory Medication.fromJsonString(String jsonString) {
     try {
       final cleanJson =
@@ -59,35 +50,31 @@ class Medication {
       return Medication(
         name: data['name'] ?? 'Unknown Name',
         dosage: data['dosage'],
-        frequencyRaw: data['frequency'],
-        directions: data['directions'],
-        reminderTimes: [],
-        userId: '',
-        takenTimestamps: [], // Initialize empty
+        frequencyRaw: data['frequency'], // Get frequency text from AI
+        directions: data['directions'], // Get directions text from AI
+        // reminderTimes removed
+        userId: '', // Will be set before saving
+        takenTimestamps: [],
       );
     } catch (e) {
       print("Error decoding JSON string: $e \nString was: $jsonString");
       return Medication(
           name: 'Parsing Error',
-          reminderTimes: [],
+          // reminderTimes removed
           userId: '',
           takenTimestamps: []);
     }
   }
 
   Map<String, dynamic> toJson() {
-    List<Map<String, int>?> timeMaps = reminderTimes
-        .map((t) => t == null ? null : {'hour': t.hour, 'minute': t.minute})
-        .toList();
+    // reminderTimes removed from map
     return {
       'name': name,
       'dosage': dosage,
       'frequencyRaw': frequencyRaw,
       'directions': directions,
-      'reminderTimes': timeMaps,
       'userId': userId,
-      'takenTimestamps':
-          takenTimestamps, // <-- ADDED: Firestore handles Timestamps directly
+      'takenTimestamps': takenTimestamps,
     };
   }
 }
