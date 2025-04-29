@@ -15,11 +15,8 @@
 local.properties
 firebase.json
 firebase_options.dart
-.dart_tool/package_config.json
-.flutter-plugins-dependencies
 .env
 .flutter-plugins
 .flutter-plugins-dependencies
-.idea
-.vscode
-.dart_tool
+.idea/
+.vscode/
