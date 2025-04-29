@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'package:medication_reminder/firestore_service.dart';
 import 'package:medication_reminder/taken_dose_model.dart';
-import 'package:table_calendar/table_calendar.dart'; // Import table_calendar
+import 'package:table_calendar/table_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -14,112 +14,113 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now(); // Day calendar is currently focused on
-  DateTime? _selectedDay; // The day the user has actually selected
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
-  // Stream for the selected day's doses
   Stream<List<TakenDose>>? _selectedDayDosesStream;
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = _focusedDay; // Select today initially
-    _updateDosesStream(_selectedDay!); // Load stream for initial day
+    _selectedDay = _focusedDay;
+    _updateDosesStream(_selectedDay!);
   }
 
-  // Function to update the stream when the selected day changes
   void _updateDosesStream(DateTime day) {
     setState(() {
       _selectedDayDosesStream = _firestoreService.getTakenDosesForDayStream(day);
     });
   }
 
-  // Called when the user selects a day on the calendar
   void _onDaySelected(DateTime selectedDay, DateTime focusedDay) {
     if (!isSameDay(_selectedDay, selectedDay)) {
       setState(() {
         _selectedDay = selectedDay;
-        _focusedDay = focusedDay; // Update focused day as well
+        _focusedDay = focusedDay;
       });
-      _updateDosesStream(selectedDay); // Fetch data for the new day
+      _updateDosesStream(selectedDay);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Optional: Add AppBar if needed for this specific screen
-      // appBar: AppBar(title: Text("Intake History")),
       body: Column(
         children: [
           // --- Calendar Widget ---
           TableCalendar(
-            firstDay: DateTime.utc(2020, 1, 1), // Set a reasonable start date
-            lastDay: DateTime.utc(DateTime.now().year + 5, 12, 31), // Set a reasonable end date
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(DateTime.now().year + 5, 12, 31),
             focusedDay: _focusedDay,
             calendarFormat: _calendarFormat,
-            selectedDayPredicate: (day) {
-              // Use `selectedDayPredicate` to determine which day is currently selected.
-              // `isSameDay` is crucial because it compares only day, month, year.
-              return isSameDay(_selectedDay, day);
-            },
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: _onDaySelected,
             onFormatChanged: (format) {
               if (_calendarFormat != format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
+                setState(() { _calendarFormat = format; });
               }
             },
-            onPageChanged: (focusedDay) {
-              // No need to call `setState()` here
-              _focusedDay = focusedDay;
-            },
-            // Optional: Customize calendar appearance
-            calendarStyle: const CalendarStyle(
-              // todayDecoration: BoxDecoration(color: Colors.blue.shade100, shape: BoxShape.circle),
-              // selectedDecoration: BoxDecoration(color: Theme.of(context).primaryColor, shape: BoxShape.circle),
-            ),
+            onPageChanged: (focusedDay) { _focusedDay = focusedDay; },
+            calendarStyle: const CalendarStyle(),
             headerStyle: const HeaderStyle(
-              formatButtonVisible: false, // Hide format button if not needed
+              formatButtonVisible: false,
               titleCentered: true,
             ),
           ),
-          const Divider(), // Separator
+          const Divider(),
 
           // --- List of Taken Doses for Selected Day ---
-          Expanded( // Use Expanded to make the list fill remaining space
+          Expanded(
             child: StreamBuilder<List<TakenDose>>(
               stream: _selectedDayDosesStream,
               builder: (context, snapshot) {
+                // 1. Handle Loading State (While waiting for Firestore response)
                 if (snapshot.connectionState == ConnectionState.waiting) {
+                  // Show loader ONLY while waiting for the initial data for the selected day
                   return const Center(child: CircularProgressIndicator());
                 }
+
+                // 2. Handle Stream Errors (e.g., permission denied, network issues)
                 if (snapshot.hasError) {
                   print("Error in CalendarScreen StreamBuilder: ${snapshot.error}");
-                  return Center(child: Text('Error loading history: ${snapshot.error}'));
+                  // Show a specific error message
+                  return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('Error loading history: ${snapshot.error}', textAlign: TextAlign.center),
+                      ));
                 }
+
+                // 3. Handle No Data Found (Query successful, but no records for the day)
+                // Check if snapshot has data BUT the data list is empty.
+                // Also handle the unlikely case where hasData is false after waiting.
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return Center(
-                    child: Text(
-                      'No doses logged for ${DateFormat.yMMMd().format(_selectedDay!)}.',
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        // Use the specific "No record" text
+                        'No record in that day (${DateFormat.yMMMd().format(_selectedDay!)})',
+                        style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   );
                 }
 
-                // Data available, display the list
+                // 4. Data is available and not empty - Display the list
                 final doses = snapshot.data!;
                 return ListView.builder(
                   itemCount: doses.length,
                   itemBuilder: (context, index) {
                     final dose = doses[index];
                     return ListTile(
-                      leading: const Icon(Icons.check_circle, color: Colors.green), // Indicate taken
-                      title: Text(dose.medicationName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      leading: const Icon(Icons.check_circle, color: Colors.green),
+                      title: Text(dose.medicationName,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text('Dosage: ${dose.dosage ?? "N/A"}'),
-                      // Display the exact time it was logged
-                      trailing: Text(DateFormat.jm().format(dose.takenAt.toDate())), // Format time
+                      trailing: Text(DateFormat.jm()
+                          .format(dose.takenAt.toDate())), // Format time
                     );
                   },
                 );
