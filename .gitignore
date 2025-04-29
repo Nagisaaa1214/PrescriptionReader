@@ -15,3 +15,6 @@
 local.properties
 firebase.json
 firebase_options.dart
+.env
+.flutter-plugins-dependencies
+.flutter-plugins

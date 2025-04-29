@@ -16,6 +16,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
@@ -44,4 +45,17 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    // Add the dependency for Core Library Desugaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4' // Use a recent version
+
+    // Add multidex dependency (needed because multiDexEnabled is true)
+    implementation 'androidx.multidex:multidex:2.0.1'
+
+    // You might have other dependencies here like Firebase BOM if you added them previously
+    // implementation platform('com.google.firebase:firebase-bom:33.1.1') // Example
+    // implementation 'com.google.firebase:firebase-auth' // Example
 }

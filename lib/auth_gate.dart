@@ -1,7 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:medication_reminder/auth_toggle_screen.dart'; // We'll create this next
+import 'package:medication_reminder/auth_toggle_screen.dart';
 import 'package:medication_reminder/home_screen.dart';
 import 'package:flutter/material.dart';
+
+//this widget is The central controller for authentication state.
+// It decides whether to show the login/register flow or 
+//the main application content (home screen).
+
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
