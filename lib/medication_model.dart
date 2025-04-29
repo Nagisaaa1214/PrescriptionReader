@@ -6,43 +6,39 @@ class Medication {
   String? id;
   String name;
   String? dosage;
-  String? frequencyRaw; // Keep raw text from AI/OCR for reference
-  String? selectedFrequency; // <-- ADDED: Store the dropdown selection
+  String? frequencyRaw;
+  String? selectedFrequency;
   String? directions;
   String userId;
-  List<Timestamp> takenTimestamps;
+  // List<Timestamp> takenTimestamps; // <-- REMOVED
 
   Medication({
     this.id,
     required this.name,
     this.dosage,
     this.frequencyRaw,
-    this.selectedFrequency, // <-- ADDED
+    this.selectedFrequency,
     this.directions,
     required this.userId,
-    List<Timestamp>? takenTimestamps,
-  }) : takenTimestamps = takenTimestamps ?? [];
+    // List<Timestamp>? takenTimestamps, // <-- REMOVED
+  }); // <-- REMOVED default initializer
 
   factory Medication.fromSnapshot(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    List<Timestamp> taken = (data['takenTimestamps'] as List<dynamic>?)
-            ?.whereType<Timestamp>()
-            .toList() ?? [];
+    // List<Timestamp> taken = (data['takenTimestamps'] as List<dynamic>?)?.whereType<Timestamp>().toList() ?? []; // <-- REMOVED
 
     return Medication(
       id: doc.id,
       name: data['name'] ?? 'Unknown Name',
       dosage: data['dosage'],
-      frequencyRaw: data['frequencyRaw'], // Read raw frequency
-      selectedFrequency: data['selectedFrequency'], // <-- ADDED: Read selected frequency
+      frequencyRaw: data['frequencyRaw'],
+      selectedFrequency: data['selectedFrequency'],
       directions: data['directions'],
       userId: data['userId'] ?? '',
-      takenTimestamps: taken,
+      // takenTimestamps: taken, // <-- REMOVED
     );
   }
 
-  // Factory from JSON String (AI Parsing output)
-  // This now primarily populates frequencyRaw. selectedFrequency will be set by user.
   factory Medication.fromJsonString(String jsonString) {
     try {
       final cleanJson =
@@ -51,16 +47,15 @@ class Medication {
       return Medication(
         name: data['name'] ?? 'Unknown Name',
         dosage: data['dosage'],
-        frequencyRaw: data['frequency'], // Store AI's guess here
-        selectedFrequency: null, // <-- Initialize as null, user must select
+        frequencyRaw: data['frequency'],
+        selectedFrequency: null,
         directions: data['directions'],
         userId: '',
-        takenTimestamps: [],
+        // takenTimestamps removed
       );
     } catch (e) {
       print("Error decoding JSON string: $e \nString was: $jsonString");
-      return Medication(
-          name: 'Parsing Error', userId: '', takenTimestamps: []);
+      return Medication(name: 'Parsing Error', userId: ''); // takenTimestamps removed
     }
   }
 
@@ -69,10 +64,10 @@ class Medication {
       'name': name,
       'dosage': dosage,
       'frequencyRaw': frequencyRaw,
-      'selectedFrequency': selectedFrequency, // <-- ADDED: Save selected frequency
+      'selectedFrequency': selectedFrequency,
       'directions': directions,
       'userId': userId,
-      'takenTimestamps': takenTimestamps,
+      // 'takenTimestamps': takenTimestamps, // <-- REMOVED
     };
   }
 }

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:medication_reminder/add_medication_screen.dart'; // Screen to add meds
 import 'package:medication_reminder/firestore_service.dart'; // Service for Firestore operations
 import 'package:medication_reminder/medication_model.dart'; // Data model for Medication
-import 'package:cloud_firestore/cloud_firestore.dart'; // For StreamBuilder types and Timestamp
+import 'package:cloud_firestore/cloud_firestore.dart'; // For StreamBuilder types
 import 'package:medication_reminder/notification_service.dart'; // Service for notifications
-import 'package:medication_reminder/frequency_parser_service.dart'; // Service to parse frequency selection
-// Optional: For formatting dates if you display 'Last taken' time
+// FrequencyParserService is no longer needed here
+// Optional: For formatting dates if you display 'Last taken' time in CalendarScreen
 // import 'package:intl/intl.dart';
 
 class MedsScreen extends StatefulWidget {
@@ -19,7 +19,7 @@ class _MedsScreenState extends State<MedsScreen> {
   // Instantiate necessary services
   final FirestoreService _firestoreService = FirestoreService();
   final NotificationService _notificationService = NotificationService();
-  final FrequencyParserService _frequencyParser = FrequencyParserService(); // Instantiate parser
+  // Removed FrequencyParserService instance
 
   // --- Function to show delete confirmation dialog ---
   Future<void> _confirmDelete(BuildContext context, Medication med) async {
@@ -77,66 +77,14 @@ class _MedsScreenState extends State<MedsScreen> {
   }
   // --- End of delete confirmation function ---
 
-  // --- Function to determine if dose was taken since last scheduled time ---
-  bool _hasTakenDoseSinceLastSchedule(Medication med) {
-    final now = DateTime.now();
-    // Parse the SELECTED frequency dropdown value
-    final List<TimeOfDay> scheduledTimesOfDay =
-        _frequencyParser.parseFrequency(med.selectedFrequency); // Use selectedFrequency
-
-    // If no schedule is determined or no doses have ever been taken, return false
-    if (scheduledTimesOfDay.isEmpty || med.takenTimestamps.isEmpty) {
-      return false;
-    }
-
-    // 1. Create potential scheduled DateTimes for today and yesterday
-    //    based on the PARSED schedule times.
-    List<DateTime> potentialLastScheduledTimes = [];
-    for (var timeOfDay in scheduledTimesOfDay) {
-      final todayDt = DateTime(
-          now.year, now.month, now.day, timeOfDay.hour, timeOfDay.minute);
-      // Consider yesterday's time as well to handle the window after midnight
-      // but before the first dose of the current day.
-      final yesterdayDt = DateTime(now.year, now.month, now.day - 1,
-          timeOfDay.hour, timeOfDay.minute);
-
-      // Only consider schedule times that are *before* the current time 'now'
-      if (todayDt.isBefore(now)) {
-        potentialLastScheduledTimes.add(todayDt);
-      }
-      potentialLastScheduledTimes.add(yesterdayDt);
-    }
-
-    // If somehow no potential past times were found (e.g., schedule only has future times today)
-    if (potentialLastScheduledTimes.isEmpty) {
-      return false;
-    }
-
-    // 2. Find the most recent scheduled time that has actually passed
-    potentialLastScheduledTimes.sort((a, b) => b.compareTo(a)); // Sort descending (most recent first)
-    DateTime lastRequiredDoseTime = potentialLastScheduledTimes.first;
-
-    // 3. Get the most recent 'taken' timestamp from the medication record
-    final lastTakenTime = med.takenTimestamps.last.toDate(); // Convert Firestore Timestamp to DateTime
-
-    // 4. Check if the last taken time occurred AFTER the last required dose time
-    bool takenSinceLast = lastTakenTime.isAfter(lastRequiredDoseTime);
-
-    // Optional Debugging:
-    // print("Med: ${med.name}, Now: $now, LastScheduled: $lastRequiredDoseTime, LastTaken: $lastTakenTime, TakenSince: $takenSinceLast");
-
-    return takenSinceLast;
-  }
-  // --- End of dose check function ---
+  // --- REMOVED _hasTakenDoseSinceLastSchedule function ---
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Using a nested Scaffold might be useful if you want a specific AppBar
-      // for the Meds screen, separate from the main HomeScreen AppBar.
+      // Optional: Add AppBar if needed for this specific screen
       // appBar: AppBar(
       //   title: const Text("My Medications"),
-      //   centerTitle: true, // Optional
       // ),
       body: StreamBuilder<List<Medication>>(
         stream: _firestoreService.getMedicationsStream(), // Listen to the stream
@@ -173,65 +121,62 @@ class _MedsScreenState extends State<MedsScreen> {
             itemCount: medications.length,
             itemBuilder: (context, index) {
               final med = medications[index];
-              // Determine checkmark state using the helper function
-              final bool doseTaken = _hasTakenDoseSinceLastSchedule(med);
+              // Removed doseTaken calculation
 
               return Card( // Wrap ListTile in a Card for better visual separation
                 margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                 child: ListTile(
                   contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  // --- Checkmark Button ---
+                  // --- MODIFIED leading button to LOG dose ---
                   leading: IconButton(
-                    icon: Icon(
-                      doseTaken ? Icons.check_circle : Icons.check_circle_outline,
-                      color: doseTaken ? Colors.green : Colors.grey.shade400,
-                      size: 30, // Slightly larger for easier tapping
+                    icon: const Icon(
+                      Icons.add_task_outlined, // Icon indicates logging action (e.g., task complete)
+                      color: Colors.blueGrey, // Neutral color
+                      size: 30,
                     ),
-                    tooltip: doseTaken
-                        ? 'Dose taken for current schedule'
-                        : 'Mark as taken now',
-                    // Prevent marking again if already checked for this window? (Optional)
-                    // onPressed: doseTaken ? null : () async {
+                    tooltip: 'Log dose taken now for ${med.name}',
                     onPressed: () async {
                       if (med.id != null && med.id!.isNotEmpty) {
                         try {
-                          // Mark as taken in Firestore
-                          await _firestoreService.markMedicationTaken(med.id!);
-                          // Optional feedback to the user
-                          // ScaffoldMessenger.of(context).showSnackBar(
-                          //   SnackBar(content: Text('${med.name} marked as taken.'), duration: Duration(seconds: 1)),
-                          // );
+                          // Call the new log dose method in FirestoreService
+                          await _firestoreService.logTakenDose(med);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('${med.name} dose logged.'),
+                                  duration: const Duration(seconds: 2)),
+                            );
+                          }
                         } catch (e) {
-                          print("Error marking taken: $e");
+                          print("Error logging dose: $e");
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                   content: Text(
-                                      'Error marking ${med.name} as taken: $e')),
+                                      'Error logging ${med.name} dose: $e')),
                             );
                           }
                         }
                       } else {
-                        print("Error: Cannot mark taken, medication ID is null or empty.");
+                        print("Error: Cannot log dose, medication ID is null or empty.");
                          if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Error: Cannot mark taken, missing medication ID.')),
+                              const SnackBar(content: Text('Error: Cannot log dose, missing medication ID.')),
                             );
                          }
                       }
                     },
                   ),
+                  // --- End modified button ---
                   // --- Medication Details ---
                   title: Text(med.name,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   subtitle: Padding( // Add padding for subtitle clarity
                     padding: const EdgeInsets.only(top: 4.0),
                     child: Text(
-                      // ** Display selectedFrequency **
+                      // Display selectedFrequency
                       'Dosage: ${med.dosage ?? "N/A"}\nFrequency: ${med.selectedFrequency ?? "N/A"}\nDirections: ${med.directions ?? "N/A"}',
                       style: TextStyle(color: Colors.grey.shade700),
-                      // Optional: Display last taken time
-                      // + (med.takenTimestamps.isNotEmpty ? '\nLast taken: ${DateFormat.yMd().add_jm().format(med.takenTimestamps.last.toDate())}' : '')
                     ),
                   ),
                   isThreeLine: true, // Ensure space for multiline subtitle

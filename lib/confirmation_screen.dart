@@ -115,7 +115,6 @@ class _ConfirmationScreenState extends State<ConfirmationScreen> {
            selectedFrequency: _selectedFrequencyValue, // <-- Use dropdown value
            directions: _directionsController.text.trim(),
            userId: user.uid,
-           takenTimestamps: _medication?.takenTimestamps ?? [],
          );
 
          try {
