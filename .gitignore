@@ -20,3 +20,6 @@ firebase_options.dart
 .env
 .flutter-plugins
 .flutter-plugins-dependencies
+.idea
+.vscode
+.dart_tool

@@ -2,14 +2,23 @@ import 'package:medication_reminder/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:medication_reminder/auth_gate.dart';
 
-void main() async {
-  // Ensure Flutter bindings are initialized
+Future<void> main() async { // Make main async
+  // Ensure Flutter is ready
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the .env file
+  // Make sure the filename matches the file you created
+  await dotenv.load(fileName: ".env");
+
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Run your app
   runApp(const MyApp());
 }
 

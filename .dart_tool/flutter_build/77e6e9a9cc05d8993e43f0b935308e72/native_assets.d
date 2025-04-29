@@ -1,1 +1,0 @@
- /Users/macbook/Documents/prescription\ reader/PrescriptionReader/.dart_tool/flutter_build/77e6e9a9cc05d8993e43f0b935308e72/native_assets.yaml: 

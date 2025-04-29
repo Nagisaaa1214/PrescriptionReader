@@ -2,6 +2,9 @@ import 'package:medication_reminder/login_screen.dart';
 import 'package:medication_reminder/register_screen.dart';
 import 'package:flutter/material.dart';
 
+//Manages the switching between the LoginScreen and RegisterScreen.
+
+
 class AuthToggleScreen extends StatefulWidget {
   const AuthToggleScreen({super.key});
 

@@ -1,3 +1,24 @@
+buildscript {
+    // Define the Kotlin version variable here
+    ext.kotlin_version = '1.9.23' // <-- Use a recent, compatible version
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        // Use a compatible Android Gradle plugin version
+        // Check Flutter documentation or project defaults if unsure
+        classpath 'com.android.tools.build:gradle:7.4.2' // Example version, adjust if needed
+
+        // Reference the kotlin_version variable for the Kotlin plugin
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+
+        // Add the Google Services plugin classpath for Firebase
+        classpath 'com.google.gms:google-services:4.4.1' // Or latest version
+    }
+}
 allprojects {
     repositories {
         google()
